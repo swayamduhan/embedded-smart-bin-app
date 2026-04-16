@@ -1,10 +1,10 @@
 import * as Location from 'expo-location';
 
-import { env } from '../../config/env';
+import { fixedBinCoordinates } from '../../config/staticBin';
 
 export const defaultRegion = {
-  latitude: env.defaultLatitude,
-  longitude: env.defaultLongitude,
+  latitude: fixedBinCoordinates.latitude,
+  longitude: fixedBinCoordinates.longitude,
   latitudeDelta: 0.08,
   longitudeDelta: 0.08,
 };

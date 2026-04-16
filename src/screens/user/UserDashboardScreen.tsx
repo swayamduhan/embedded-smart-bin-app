@@ -1,29 +1,37 @@
 import { useMemo } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { AnimatedCard } from '../../components/AnimatedCard';
 import { BinStatusBadge } from '../../components/BinStatusBadge';
 import { DashboardStatCard } from '../../components/DashboardStatCard';
-import { EmptyState } from '../../components/EmptyState';
 import { Screen } from '../../components/Screen';
 import { SectionHeader } from '../../components/SectionHeader';
+import { fixedBin } from '../../config/staticBin';
 import { useCurrentLocation } from '../../hooks/useCurrentLocation';
-import { useNearbyBins } from '../../hooks/useNearbyBins';
 import { useAppTheme } from '../../hooks/useAppTheme';
+import { openGoogleMapsRoute } from '../../services/maps/googleMaps';
 import { useAuthStore } from '../../store/authStore';
-import { useBinStore } from '../../store/binStore';
+import { distanceInKm } from '../../utils/geo';
 import { formatDistance } from '../../utils/formatters';
 
 export function UserDashboardScreen() {
   const theme = useAppTheme();
   const profile = useAuthStore((state) => state.profile);
-  const binsById = useBinStore((state) => state.binsById);
-  const bins = useMemo(
-    () => Object.values(binsById).sort((left, right) => right.updatedAt - left.updatedAt),
-    [binsById]
-  );
   const { location } = useCurrentLocation();
-  const nearbyBins = useNearbyBins(bins, location, 5);
+  const nearbyBins = useMemo(
+    () => [
+      {
+        ...fixedBin,
+        distanceKm: location
+          ? distanceInKm(location, {
+              latitude: fixedBin.lat,
+              longitude: fixedBin.lng,
+            })
+          : 0,
+      },
+    ],
+    [location]
+  );
 
   return (
     <Screen>
@@ -40,49 +48,53 @@ export function UserDashboardScreen() {
         />
         <DashboardStatCard
           label="Nearby bins"
-          value={`${nearbyBins.length}`}
-          helper="Only bins with available capacity are surfaced here."
+          value="1"
+          helper="Hardcoded to the fixed demo dustbin for easy testing and routing."
         />
       </View>
 
-      <SectionHeader title="Closest available bins" subtitle="Sorted by your current location." />
+      <SectionHeader title="Closest available bins" subtitle="Pinned demo location for quick navigation." />
 
-      {nearbyBins.length === 0 ? (
-        <EmptyState
-          title="No nearby bins right now"
-          message="Either location permission is off or every nearby bin is already full."
-        />
-      ) : (
-        nearbyBins.map((bin, index) => (
-          <AnimatedCard key={bin.id} delay={index * 50}>
-            <View
-              style={[
-                styles.binCard,
-                { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
-              ]}
-            >
-              <View style={styles.binHeader}>
-                <View>
-                  <Text style={[styles.binName, { color: theme.colors.text }]}>{bin.id}</Text>
-                  <Text style={[styles.binMeta, { color: theme.colors.textMuted }]}>
-                    {formatDistance(bin.distanceKm)} away
-                  </Text>
-                </View>
-                <BinStatusBadge status={bin.status} />
-              </View>
-
-              <View style={styles.binFooter}>
-                <Text style={[styles.fillLabel, { color: theme.colors.textMuted }]}>
-                  Fill level {bin.fill}%
-                </Text>
-                <Text style={[styles.fillValue, { color: theme.colors.text }]}>
-                  {bin.alert === 'NONE' ? 'Safe to use' : `Alert: ${bin.alert}`}
+      {nearbyBins.map((bin, index) => (
+        <AnimatedCard key={bin.id} delay={index * 50}>
+          <View
+            style={[
+              styles.binCard,
+              { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
+            ]}
+          >
+            <View style={styles.binHeader}>
+              <View>
+                <Text style={[styles.binName, { color: theme.colors.text }]}>{bin.id}</Text>
+                <Text style={[styles.binMeta, { color: theme.colors.textMuted }]}>
+                  {location ? formatDistance(bin.distanceKm) : 'Pinned location'}
                 </Text>
               </View>
+              <BinStatusBadge status={bin.status} />
             </View>
-          </AnimatedCard>
-        ))
-      )}
+
+            <View style={styles.binFooter}>
+              <Text style={[styles.fillLabel, { color: theme.colors.textMuted }]}>
+                Fill level {bin.fill}% | Coordinates {bin.lat.toFixed(6)}, {bin.lng.toFixed(6)}
+              </Text>
+              <Text style={[styles.fillValue, { color: theme.colors.text }]}>
+                {bin.alert === 'NONE' ? 'Safe to use' : `Alert: ${bin.alert}`}
+              </Text>
+            </View>
+
+            <Pressable
+              style={[styles.routeButton, { backgroundColor: theme.colors.accent }]}
+              onPress={() =>
+                openGoogleMapsRoute(bin, location).catch(() =>
+                  Alert.alert('Unable to open route')
+                )
+              }
+            >
+              <Text style={styles.routeLabel}>Route in Google Maps</Text>
+            </Pressable>
+          </View>
+        </AnimatedCard>
+      ))}
     </Screen>
   );
 }
@@ -120,5 +132,17 @@ const styles = StyleSheet.create({
   fillValue: {
     fontSize: 16,
     fontWeight: '800',
+  },
+  routeButton: {
+    minHeight: 48,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 4,
+  },
+  routeLabel: {
+    color: '#07131D',
+    fontSize: 15,
+    fontWeight: '900',
   },
 });

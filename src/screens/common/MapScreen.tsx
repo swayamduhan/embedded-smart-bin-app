@@ -1,56 +1,25 @@
-import { useMemo } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import MapView, { PROVIDER_GOOGLE } from 'react-native-maps';
 
 import { BinMarker } from '../../components/BinMarker';
 import { BinStatusBadge } from '../../components/BinStatusBadge';
-import { EmptyState } from '../../components/EmptyState';
 import { Screen } from '../../components/Screen';
+import { fixedBin, fixedBinRegion } from '../../config/staticBin';
 import { useCurrentLocation } from '../../hooks/useCurrentLocation';
-import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { useAppTheme } from '../../hooks/useAppTheme';
-import { defaultRegion } from '../../services/location/locationService';
 import { openGoogleMapsRoute } from '../../services/maps/googleMaps';
-import { selectRole, useAuthStore } from '../../store/authStore';
-import { useBinStore } from '../../store/binStore';
 import { alertLabel, formatTimestamp } from '../../utils/formatters';
 
 export function MapScreen() {
   const theme = useAppTheme();
-  const role = useAuthStore(selectRole);
-  const binsById = useBinStore((state) => state.binsById);
-  const selectedBinId = useBinStore((state) => state.selectedBinId);
-  const selectBin = useBinStore((state) => state.selectBin);
-  const connectionState = useBinStore((state) => state.connectionState);
   const { location } = useCurrentLocation();
-  const bins = useMemo(
-    () => Object.values(binsById).sort((left, right) => right.updatedAt - left.updatedAt),
-    [binsById]
-  );
-  const debouncedBins = useDebouncedValue(bins, 250);
-
-  const selectedBin = useMemo(
-    () => bins.find((bin) => bin.id === selectedBinId) ?? null,
-    [bins, selectedBinId]
-  );
-
-  if (bins.length === 0) {
-    return (
-      <Screen>
-        <EmptyState
-          title="Waiting for MQTT data"
-          message="Connect your broker and publish to dustbin/status, dustbin/location, and dustbin/alerts to populate the map."
-        />
-      </Screen>
-    );
-  }
 
   return (
     <Screen scrollable={false} contentStyle={styles.screenContent}>
       <View style={[styles.headerCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
-        <Text style={[styles.title, { color: theme.colors.text }]}>Live Dustbin Map</Text>
+        <Text style={[styles.title, { color: theme.colors.text }]}>Pinned Dustbin Map</Text>
         <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>
-          MQTT state: <Text style={{ color: theme.colors.accent }}>{connectionState}</Text>
+          Fixed bin location at 12.974970, 79.165385 with direct Google Maps routing.
         </Text>
       </View>
 
@@ -58,67 +27,48 @@ export function MapScreen() {
         <MapView
           provider={PROVIDER_GOOGLE}
           style={StyleSheet.absoluteFill}
-          initialRegion={
-            location
-              ? {
-                  latitude: location.latitude,
-                  longitude: location.longitude,
-                  latitudeDelta: 0.06,
-                  longitudeDelta: 0.06,
-                }
-              : defaultRegion
-          }
+          initialRegion={fixedBinRegion}
           showsUserLocation
           showsMyLocationButton
         >
-          {debouncedBins.map((bin) => (
-            <BinMarker key={bin.id} bin={bin} onPress={(pressedBin) => selectBin(pressedBin.id)} />
-          ))}
+          <BinMarker bin={fixedBin} onPress={() => undefined} />
         </MapView>
       </View>
 
-      {selectedBin ? (
-        <View
-          style={[
-            styles.detailCard,
-            { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
-          ]}
-        >
-          <View style={styles.detailRow}>
-            <Text style={[styles.binName, { color: theme.colors.text }]}>{selectedBin.id}</Text>
-            <BinStatusBadge status={selectedBin.status} />
-          </View>
-
-          <Text style={[styles.detailMeta, { color: theme.colors.textMuted }]}>
-            Fill level {selectedBin.fill}% | Alert {alertLabel(selectedBin.alert)}
-          </Text>
-          <Text style={[styles.detailMeta, { color: theme.colors.textMuted }]}>
-            Updated {formatTimestamp(selectedBin.updatedAt)}
-          </Text>
-
-          <View style={styles.actionsRow}>
-            <Pressable
-              style={[styles.secondaryButton, { borderColor: theme.colors.border }]}
-              onPress={() => selectBin(null)}
-            >
-              <Text style={[styles.secondaryLabel, { color: theme.colors.text }]}>Close</Text>
-            </Pressable>
-
-            {role === 'STAFF' ? (
-              <Pressable
-                style={[styles.primaryButton, { backgroundColor: theme.colors.accent }]}
-                onPress={() =>
-                  openGoogleMapsRoute(selectedBin, location).catch(() =>
-                    Alert.alert('Unable to open route')
-                  )
-                }
-              >
-                <Text style={styles.primaryLabel}>Open Route</Text>
-              </Pressable>
-            ) : null}
-          </View>
+      <View
+        style={[
+          styles.detailCard,
+          { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
+        ]}
+      >
+        <View style={styles.detailRow}>
+          <Text style={[styles.binName, { color: theme.colors.text }]}>{fixedBin.id}</Text>
+          <BinStatusBadge status={fixedBin.status} />
         </View>
-      ) : null}
+
+        <Text style={[styles.detailMeta, { color: theme.colors.textMuted }]}>
+          Fill level {fixedBin.fill}% | Alert {alertLabel(fixedBin.alert)}
+        </Text>
+        <Text style={[styles.detailMeta, { color: theme.colors.textMuted }]}>
+          Updated {formatTimestamp(fixedBin.updatedAt)}
+        </Text>
+        <Text style={[styles.detailMeta, { color: theme.colors.textMuted }]}>
+          Coordinates {fixedBin.lat.toFixed(6)}, {fixedBin.lng.toFixed(6)}
+        </Text>
+
+        <View style={styles.actionsRow}>
+          <Pressable
+            style={[styles.primaryButton, { backgroundColor: theme.colors.accent }]}
+            onPress={() =>
+              openGoogleMapsRoute(fixedBin, location).catch(() =>
+                Alert.alert('Unable to open route')
+              )
+            }
+          >
+            <Text style={styles.primaryLabel}>Route in Google Maps</Text>
+          </Pressable>
+        </View>
+      </View>
     </Screen>
   );
 }
@@ -183,18 +133,6 @@ const styles = StyleSheet.create({
   primaryLabel: {
     color: '#07131D',
     fontWeight: '900',
-    fontSize: 15,
-  },
-  secondaryButton: {
-    flex: 1,
-    minHeight: 48,
-    borderRadius: 16,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  secondaryLabel: {
-    fontWeight: '800',
     fontSize: 15,
   },
 });
