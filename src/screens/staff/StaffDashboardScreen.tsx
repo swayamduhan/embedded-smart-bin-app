@@ -23,20 +23,18 @@ export function StaffDashboardScreen() {
     [binsById]
   );
 
-  const priorityBins = bins.filter((bin) => bin.status === 'FULL' || bin.status === 'ALMOST_FULL');
-
   return (
     <Screen>
       <SectionHeader
         title="Staff operations"
-        subtitle="Prioritize full bins, monitor incoming alerts, and route drivers straight from the dashboard."
+        subtitle="See every live bin, its current fill level, and jump straight to its location in Google Maps."
       />
 
       <View style={styles.statsGrid}>
         <DashboardStatCard
-          label="Priority bins"
-          value={`${priorityBins.length}`}
-          helper="Bins that need pickup planning right now."
+          label="Live bins"
+          value={`${bins.length}`}
+          helper="Every MQTT-connected bin currently visible in the system."
         />
         <DashboardStatCard
           label="Active alerts"
@@ -45,15 +43,15 @@ export function StaffDashboardScreen() {
         />
       </View>
 
-      <SectionHeader title="Collection queue" subtitle="Real-time MQTT updates keep this list fresh." />
+      <SectionHeader title="All bins" subtitle="Real-time MQTT updates keep this list fresh." />
 
-      {priorityBins.length === 0 ? (
+      {bins.length === 0 ? (
         <EmptyState
-          title="No urgent bins"
-          message="Everything looks healthy. Full and almost-full bins will appear here automatically."
+          title="No live bins yet"
+          message="Once your hardware publishes retained payloads, each bin will show up here with fill level and map location."
         />
       ) : (
-        priorityBins.map((bin, index) => (
+        bins.map((bin, index) => (
           <AnimatedCard key={bin.id} delay={index * 40}>
             <View
               style={[
@@ -74,12 +72,15 @@ export function StaffDashboardScreen() {
               <Text style={[styles.fillText, { color: theme.colors.text }]}>
                 {bin.fill}% filled | {alertLabel(bin.alert)}
               </Text>
+              <Text style={[styles.locationText, { color: theme.colors.textMuted }]}>
+                Location {bin.lat.toFixed(6)}, {bin.lng.toFixed(6)}
+              </Text>
 
               <Pressable
                 style={[styles.routeButton, { backgroundColor: theme.colors.accent }]}
                 onPress={() => openGoogleMapsRoute(bin, location)}
               >
-                <Text style={styles.routeLabel}>Open Route in Google Maps</Text>
+                <Text style={styles.routeLabel}>Open Location in Google Maps</Text>
               </Pressable>
             </View>
           </AnimatedCard>
@@ -119,6 +120,9 @@ const styles = StyleSheet.create({
   fillText: {
     fontSize: 15,
     fontWeight: '700',
+  },
+  locationText: {
+    fontSize: 14,
   },
   routeButton: {
     minHeight: 48,

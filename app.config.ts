@@ -21,11 +21,11 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     backgroundColor: '#08131d',
   },
   ios: {
-    bundleIdentifier: bundleId,
+    bundleIdentifier: "com.smartbin.mobile",
     supportsTablet: true,
-    googleServicesFile: process.env.GOOGLE_SERVICES_PLIST,
+    googleServicesFile: "./GoogleService-Info.plist",
     config: {
-      googleMapsApiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY,
+      googleMapsApiKey: "AIzaSyDkaQegJlcDYTy9k262AYTnwfgy4TxuFvU",
     },
     infoPlist: {
       NSLocationWhenInUseUsageDescription:

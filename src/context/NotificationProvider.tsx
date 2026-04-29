@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 
 import {
   configureNotificationsAsync,
@@ -15,6 +15,13 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const profile = useAuthStore((state) => state.profile);
   const role = useAuthStore(selectRole);
   const events = useBinStore((state) => state.events);
+  const alertEvents = useMemo(
+    () =>
+      events.filter(
+        (event) => event.type === 'FIRE' || event.type === 'GAS' || event.type === 'TAMPERING'
+      ),
+    [events]
+  );
   const lastEventId = useRef<string | null>(null);
 
   useEffect(() => {
@@ -42,11 +49,11 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   }, [profile, role]);
 
   useEffect(() => {
-    if (role !== 'STAFF' || events.length === 0) {
+    if (role !== 'STAFF' || alertEvents.length === 0) {
       return;
     }
 
-    const newestEvent = events[0];
+    const newestEvent = alertEvents[0];
 
     if (!newestEvent || newestEvent.id === lastEventId.current) {
       return;
@@ -54,7 +61,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
     lastEventId.current = newestEvent.id;
     showStaffEventNotification(newestEvent).catch(() => undefined);
-  }, [events, role]);
+  }, [alertEvents, role]);
 
   return children;
 }
